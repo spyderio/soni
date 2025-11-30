@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Function Sonification - Transform Math into Music</title>
+    <meta name="description" content="Convert mathematical functions into beautiful musical sequences. Visualize and hear your equations through interactive sonification.">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js for graphing -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Math.js for function evaluation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.1/math.min.js"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        background: 'hsl(220, 25%, 8%)',
+                        foreground: 'hsl(210, 40%, 98%)',
+                        card: 'hsl(220, 20%, 12%)',
+                        'card-foreground': 'hsl(210, 40%, 98%)',
+                        primary: 'hsl(185, 100%, 50%)',
+                        'primary-foreground': 'hsl(220, 25%, 8%)',
+                        secondary: 'hsl(340, 80%, 60%)',
+                        'secondary-foreground': 'hsl(210, 40%, 98%)',
+                        muted: 'hsl(220, 15%, 20%)',
+                        'muted-foreground': 'hsl(210, 20%, 60%)',
+                        accent: 'hsl(280, 70%, 65%)',
+                        'accent-foreground': 'hsl(210, 40%, 98%)',
+                        destructive: 'hsl(0, 84.2%, 60.2%)',
+                        border: 'hsl(220, 15%, 25%)',
+                        input: 'hsl(220, 15%, 20%)',
+                        ring: 'hsl(185, 100%, 50%)',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: hsl(220, 25%, 8%);
+            color: hsl(210, 40%, 98%);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, hsl(185, 100%, 50%), hsl(280, 70%, 65%));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: hsl(210, 40%, 98%);
+            border: 2px solid hsl(185, 100%, 50%);
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 8px;
+            background: hsl(220, 15%, 20%);
+            border-radius: 4px;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: hsl(210, 40%, 98%);
+            border: 2px solid hsl(185, 100%, 50%);
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-moz-range-track {
+            height: 8px;
+            background: hsl(220, 15%, 20%);
+            border-radius: 4px;
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            outline: none;
+        }
+        
+        .btn-primary {
+            background-color: hsl(185, 100%, 50%);
+            color: hsl(220, 25%, 8%);
+            padding: 0.75rem 1.5rem;
+        }
+        
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+        
+        .btn-outline {
+            background-color: transparent;
+            color: hsl(210, 40%, 98%);
+            border: 1px solid hsl(220, 15%, 25%);
+            padding: 0.75rem 1rem;
+        }
+        
+        .btn-outline:hover {
+            background-color: hsl(220, 15%, 20%);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-6 md:p-12">
+    <div class="max-w-7xl mx-auto space-y-8">
+        <!-- Header -->
+        <header class="text-center space-y-4 animate-fade-in">
+            <h1 class="text-5xl md:text-7xl font-bold gradient-text">
+                Function Sonification
+            </h1>
+            <p class="text-lg text-muted-foreground max-w-2xl mx-auto" style="color: hsl(210, 20%, 60%);">
+                Transform mathematical functions into musical sequences. 
+                Watch as your equations come alive through sound and visualization.
+            </p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column: Input and Graph -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Function Input -->
+                <div class="space-y-2 animate-fade-in">
+                    <label for="function" class="text-lg font-medium block">
+                        Mathematical Function
+                    </label>
+                    <input
+                        type="text"
+                        id="function"
+                        value="sin(x)"
+                        placeholder="e.g., sin(x), x^2, cos(x) + x/10"
+                        class="w-full px-3 py-2 text-lg font-mono rounded-md border focus:outline-none focus:ring-2"
+                        style="background-color: hsl(220, 20%, 12%); border-color: hsl(220, 15%, 25%); color: hsl(210, 40%, 98%); font-family: 'JetBrains Mono', monospace;"
+                    />
+                    <p id="error-message" class="text-sm hidden" style="color: hsl(0, 84.2%, 60.2%);"></p>
+                    <p class="text-xs" style="color: hsl(210, 20%, 60%);">
+                        Use x as the variable. Supported: sin, cos, tan, sqrt, abs, ^, +, -, *, /
+                    </p>
+                </div>
+                
+                <!-- Graph -->
+                <div class="w-full h-[400px] rounded-lg p-6 border animate-fade-in" style="background-color: hsl(220, 20%, 12%); border-color: hsl(220, 15%, 25%);">
+                    <canvas id="functionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Right Column: Controls -->
+            <div class="space-y-6">
+                <div class="rounded-lg p-6 border sticky top-6 animate-fade-in" style="background-color: hsl(220, 20%, 12%); border-color: hsl(220, 15%, 25%);">
+                    <h3 class="text-xl font-semibold mb-6">Playback Controls</h3>
+                    
+                    <!-- Play/Pause and Reset Buttons -->
+                    <div class="flex gap-4 mb-6">
+                        <button id="playPauseBtn" class="btn btn-primary flex-1">
+                            <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span>Play</span>
+                        </button>
+                        <button id="resetBtn" class="btn btn-outline">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Tempo Slider -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label for="tempo" class="text-sm font-medium">
+                                Tempo (BPM)
+                            </label>
+                            <span id="tempoValue" class="text-sm" style="color: hsl(210, 20%, 60%);">120</span>
+                        </div>
+                        <input
+                            type="range"
+                            id="tempo"
+                            min="60"
+                            max="240"
+                            step="10"
+                            value="120"
+                            class="w-full"
+                        />
+                    </div>
+
+                    <!-- How it works -->
+                    <div class="mt-8 pt-6" style="border-top: 1px solid hsl(220, 15%, 25%);">
+                        <h4 class="text-sm font-semibold mb-3">How it works</h4>
+                        <ul class="space-y-2 text-sm" style="color: hsl(210, 20%, 60%);">
+                            <li class="flex items-start gap-2">
+                                <span style="color: hsl(185, 100%, 50%);">→</span>
+                                <span>X-axis maps to time (88 points = 88 piano keys)</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span style="color: hsl(185, 100%, 50%);">→</span>
+                                <span>Y-axis maps to pitch (higher values = higher notes)</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span style="color: hsl(185, 100%, 50%);">→</span>
+                                <span>Steeper slopes = faster tempo</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Audio Engine
+        class AudioEngine {
+            constructor() {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                this.gainNode = this.audioContext.createGain();
+                this.gainNode.connect(this.audioContext.destination);
+                this.gainNode.gain.value = 0.3;
+                this.currentOscillator = null;
+            }
+
+            playNote(frequency, duration) {
+                this.stopNote();
+                
+                this.currentOscillator = this.audioContext.createOscillator();
+                this.currentOscillator.type = 'sine';
+                this.currentOscillator.frequency.value = frequency;
+                this.currentOscillator.connect(this.gainNode);
+                this.currentOscillator.start();
+
+                setTimeout(() => {
+                    this.stopNote();
+                }, duration);
+            }
+
+            stopNote() {
+                if (this.currentOscillator) {
+                    this.currentOscillator.stop();
+                    this.currentOscillator.disconnect();
+                    this.currentOscillator = null;
+                }
+            }
+
+            cleanup() {
+                this.stopNote();
+                if (this.audioContext) {
+                    this.audioContext.close();
+                }
+            }
+        }
+
+        // Helper functions
+        function parseFunction(functionStr, xMin, xMax, points) {
+            const step = (xMax - xMin) / (points - 1);
+            const data = [];
+
+            for (let i = 0; i < points; i++) {
+                const x = xMin + i * step;
+                try {
+                    const y = math.evaluate(functionStr, { x });
+                    if (typeof y === 'number' && isFinite(y)) {
+                        data.push({ x, y });
+                    }
+                } catch (error) {
+                    console.error('Error evaluating function at x =', x, error);
+                }
+            }
+
+            return data;
+        }
+
+        function mapToMidiNote(value, min, max) {
+            const normalized = (value - min) / (max - min);
+            return Math.floor(21 + normalized * 87);
+        }
+
+        function midiToFrequency(midi) {
+            return 440 * Math.pow(2, (midi - 69) / 12);
+        }
+
+        // State
+        let chart;
+        let data = [];
+        let isPlaying = false;
+        let currentIndex = undefined;
+        let tempo = 120;
+        let audioEngine = new AudioEngine();
+        let intervalId = null;
+
+        // Elements
+        const functionInput = document.getElementById('function');
+        const errorMessage = document.getElementById('error-message');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const tempoSlider = document.getElementById('tempo');
+        const tempoValue = document.getElementById('tempoValue');
+
+        // Initialize chart
+        function initChart() {
+            const ctx = document.getElementById('functionChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'f(x)',
+                        data: [],
+                        borderColor: 'hsl(185, 100%, 50%)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'hsl(220, 20%, 12%)',
+                            borderColor: 'hsl(220, 15%, 25%)',
+                            borderWidth: 1,
+                            titleColor: 'hsl(210, 40%, 98%)',
+                            bodyColor: 'hsl(210, 40%, 98%)',
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            grid: {
+                                color: 'hsl(220, 15%, 25%)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: 'hsl(210, 20%, 60%)'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'hsl(220, 15%, 25%)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: 'hsl(210, 20%, 60%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update chart data
+        function updateChart() {
+            chart.data.datasets[0].data = data.map(point => ({ x: point.x, y: point.y }));
+            chart.update('none');
+        }
+
+        // Update function
+        function updateFunction() {
+            try {
+                const newData = parseFunction(functionInput.value, -10, 10, 88);
+                if (newData.length === 0) {
+                    errorMessage.textContent = 'Invalid function or no valid points';
+                    errorMessage.classList.remove('hidden');
+                    data = [];
+                } else {
+                    data = newData;
+                    errorMessage.classList.add('hidden');
+                    updateChart();
+                }
+            } catch (err) {
+                errorMessage.textContent = 'Error parsing function';
+                errorMessage.classList.remove('hidden');
+                console.error(err);
+            }
+        }
+
+        // Play sequence
+        function playSequence() {
+            if (data.length === 0) return;
+
+            const yValues = data.map(d => d.y);
+            const minY = Math.min(...yValues);
+            const maxY = Math.max(...yValues);
+
+            const noteDuration = (60 / tempo) * 1000;
+            let index = 0;
+
+            isPlaying = true;
+            currentIndex = 0;
+            updatePlayButton();
+
+            const playNext = () => {
+                if (index >= data.length) {
+                    stopSequence();
+                    return;
+                }
+
+                const point = data[index];
+                const midiNote = mapToMidiNote(point.y, minY, maxY);
+                const frequency = midiToFrequency(midiNote);
+
+                audioEngine.playNote(frequency, noteDuration * 0.8);
+                currentIndex = index;
+
+                index++;
+            };
+
+            playNext();
+            intervalId = setInterval(playNext, noteDuration);
+        }
+
+        // Stop sequence
+        function stopSequence() {
+            if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = null;
+            }
+            audioEngine.stopNote();
+            isPlaying = false;
+            currentIndex = undefined;
+            updatePlayButton();
+        }
+
+        // Reset sequence
+        function resetSequence() {
+            stopSequence();
+            currentIndex = undefined;
+        }
+
+        // Update play button
+        function updatePlayButton() {
+            if (isPlaying) {
+                playPauseBtn.innerHTML = `
+                    <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>Pause</span>
+                `;
+            } else {
+                playPauseBtn.innerHTML = `
+                    <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>Play</span>
+                `;
+            }
+        }
+
+        // Event listeners
+        functionInput.addEventListener('input', updateFunction);
+        
+        playPauseBtn.addEventListener('click', () => {
+            if (isPlaying) {
+                stopSequence();
+            } else {
+                playSequence();
+            }
+        });
+
+        resetBtn.addEventListener('click', resetSequence);
+
+        tempoSlider.addEventListener('input', (e) => {
+            tempo = parseInt(e.target.value);
+            tempoValue.textContent = tempo;
+        });
+
+        // Initialize
+        initChart();
+        updateFunction();
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            audioEngine.cleanup();
+        });
+    </script>
+</body>
+</html>
